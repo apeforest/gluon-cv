@@ -434,18 +434,18 @@ def main():
             logger.info('[Epoch %d] speed: %d samples/sec\ttime cost: %f'%(epoch, throughput, time.time()-tic))
             logger.info('[Epoch %d] validation: err-top1=%f err-top5=%f'%(epoch, err_top1_val, err_top5_val))
 
-            if err_top1_val < best_val_score:
-                best_val_score = err_top1_val
-                net.save_parameters('%s/%.4f-imagenet-%s-%d-best.params'%(save_dir, best_val_score, model_name, epoch))
-                trainer.save_states('%s/%.4f-imagenet-%s-%d-best.states'%(save_dir, best_val_score, model_name, epoch))
+            #if err_top1_val < best_val_score:
+            #    best_val_score = err_top1_val
+            #    net.save_parameters('%s/%.4f-imagenet-%s-%d-best.params'%(save_dir, best_val_score, model_name, epoch))
+            #    trainer.save_states('%s/%.4f-imagenet-%s-%d-best.states'%(save_dir, best_val_score, model_name, epoch))
 
-            if save_frequency and save_dir and (epoch + 1) % save_frequency == 0:
-                net.save_parameters('%s/imagenet-%s-%d.params'%(save_dir, model_name, epoch))
-                trainer.save_states('%s/imagenet-%s-%d.states'%(save_dir, model_name, epoch))
+            #if save_frequency and save_dir and (epoch + 1) % save_frequency == 0:
+            #    net.save_parameters('%s/imagenet-%s-%d.params'%(save_dir, model_name, epoch))
+            #    trainer.save_states('%s/imagenet-%s-%d.states'%(save_dir, model_name, epoch))
 
-        if save_frequency and save_dir:
-            net.save_parameters('%s/imagenet-%s-%d.params'%(save_dir, model_name, opt.num_epochs-1))
-            trainer.save_states('%s/imagenet-%s-%d.states'%(save_dir, model_name, opt.num_epochs-1))
+        #if save_frequency and save_dir:
+        #    net.save_parameters('%s/imagenet-%s-%d.params'%(save_dir, model_name, opt.num_epochs-1))
+        #    trainer.save_states('%s/imagenet-%s-%d.states'%(save_dir, model_name, opt.num_epochs-1))
 
 
     if opt.mode == 'hybrid':
