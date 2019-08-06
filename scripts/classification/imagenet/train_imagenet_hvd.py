@@ -179,7 +179,7 @@ def main():
     net = get_model(model_name, **kwargs)
     net.cast(opt.dtype)
     if opt.resume_params is not '':
-        net.load_parameters(opt.resume_params, ctx = context)
+        net.load_parameters(opt.resume_params, ctx=context)
 
     # teacher model for distillation training
     if opt.teacher is not None and opt.hard_weight < 1.0:
@@ -351,8 +351,6 @@ def main():
         return (1-top1, 1-top5)
 
     def train(ctx):
-        if isinstance(ctx, mx.Context):
-            ctx = [ctx]
         if opt.resume_params is '':
             net.initialize(mx.init.MSRAPrelu(), ctx=ctx)
 
