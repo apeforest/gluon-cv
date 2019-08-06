@@ -412,15 +412,8 @@ def main():
 
                 with ag.record():
                     outputs = net(data.astype(opt.dtype, copy=False))
-                    # outputs = [net(X.astype(opt.dtype, copy=False)) for X in data]
-                    if distillation:
-                        loss = [L(yhat.astype('float32', copy=False),
-                                  y.astype('float32', copy=False),
-                                  p.astype('float32', copy=False)) for yhat, y, p in zip(outputs, label, teacher_prob)]
-                    else:
-                        loss = [L(yhat, y.astype(opt.dtype, copy=False)) for yhat, y in zip(outputs, label)]
-                for l in loss:
-                    l.backward()
+                    loss = L(outputs, label)
+                loss.backward()
                 trainer.step(batch_size)
 
                 if opt.mixup:
