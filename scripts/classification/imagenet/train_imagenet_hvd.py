@@ -373,8 +373,8 @@ def main():
             sparse_label_loss = True
         if distillation:
             L = gcv.loss.DistillationSoftmaxCrossEntropyLoss(temperature=opt.temperature,
-                                                                 hard_weight=opt.hard_weight,
-                                                                 sparse_label=sparse_label_loss)
+                                                             hard_weight=opt.hard_weight,
+                                                             sparse_label=sparse_label_loss)
         else:
             L = gluon.loss.SoftmaxCrossEntropyLoss(sparse_label=sparse_label_loss)
 
@@ -406,25 +406,16 @@ def main():
                     hard_label = label
                     label = smooth(label, classes)
 
-                if distillation:
-                    teacher_prob = [nd.softmax(teacher(X.astype(opt.dtype, copy=False)) / opt.temperature) \
-                                    for X in data]
-
                 with ag.record():
-                    outputs = net(data.astype(opt.dtype, copy=False))
-                    loss = L(outputs, label)
+                    output = net(data.astype(opt.dtype, copy=False))
+                    loss = L(output, label)
                 loss.backward()
                 trainer.step(batch_size)
 
-                if opt.mixup:
-                    output_softmax = [nd.SoftmaxActivation(out.astype('float32', copy=False)) \
-                                    for out in outputs]
-                    train_metric.update(label, output_softmax)
+                if opt.label_smoothing:
+                    train_metric.update([hard_label], output)
                 else:
-                    if opt.label_smoothing:
-                        train_metric.update(hard_label, outputs)
-                    else:
-                        train_metric.update(label, outputs)
+                    train_metric.update([label], output)
 
                 if opt.log_interval and not (i+1)%opt.log_interval:
                     train_metric_name, train_metric_score = train_metric.get()
