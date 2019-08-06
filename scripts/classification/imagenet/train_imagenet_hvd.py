@@ -33,8 +33,6 @@ def parse_args():
                         help='training batch size per device (CPU/GPU).')
     parser.add_argument('--dtype', type=str, default='float32',
                         help='data type for training. default is float32')
-    parser.add_argument('--num-gpus', type=int, default=0,
-                        help='number of gpus to use.')
     parser.add_argument('-j', '--num-data-workers', dest='num_workers', default=4, type=int,
                         help='number of preprocessing workers')
     parser.add_argument('--num-epochs', type=int, default=3,
@@ -123,18 +121,19 @@ def main():
     logger.info(opt)
 
     hvd.init()
-    num_workers = hvd.size()
     rank = hvd.rank()
     local_rank = hvd.local_rank()
+    num_gpus = hvd.size()
 
     batch_size = opt.batch_size
     classes = 1000
     num_training_samples = 1281167
 
-    num_gpus = opt.num_gpus
-    batch_size *= max(1, hvd.size())
-    logger.info('effective batch size :', batch_size)
-    context = [mx.gpu(i) for i in range(num_gpus)] if num_gpus > 0 else [mx.cpu()]
+    if rank == 0:
+        logger.info('Distributed training with %d workers and total batch size %d' % (num_gpus, batch_size * num_gpus))
+
+    # Horovod: pin GPU to local rank
+    context = mx.cpu(local_rank) if args.no_cuda else mx.gpu(local_rank)
     num_workers = opt.num_workers
 
     lr_decay = opt.lr_decay
@@ -144,7 +143,7 @@ def main():
     else:
         lr_decay_epoch = [int(i) for i in opt.lr_decay_epoch.split(',')]
     lr_decay_epoch = [e - opt.warmup_epochs for e in lr_decay_epoch]
-    num_batches = num_training_samples // batch_size
+    num_batches = int(math.ceil((num_training_samples // num_gpus) / batch_size))
 
     lr_scheduler = LRSequential([
         LRScheduler('linear', base_lr=0, target_lr=opt.lr,
@@ -204,8 +203,8 @@ def main():
         std_rgb = [58.393, 57.12, 57.375]
 
         def batch_fn(batch, ctx):
-            data = gluon.utils.split_and_load(batch.data[0], ctx_list=ctx, batch_axis=0)
-            label = gluon.utils.split_and_load(batch.label[0], ctx_list=ctx, batch_axis=0)
+            data = batch.data[0].as_in_context(ctx)
+            label = batch.label[0].as_in_context(ctx)
             return data, label
 
         train_data = mx.io.ImageRecordIter(
@@ -232,6 +231,9 @@ def main():
             saturation          = jitter_param,
             contrast            = jitter_param,
             pca_noise           = lighting_param,
+            num_parts           = num_gpus,
+            part_index          = rank,
+            device_id           = local_rank
         )
         val_data = mx.io.ImageRecordIter(
             path_imgrec         = rec_val,
@@ -248,6 +250,7 @@ def main():
             std_r               = std_rgb[0],
             std_g               = std_rgb[1],
             std_b               = std_rgb[2],
+            device_id           = local_rank
         )
         return train_data, val_data, batch_fn
 
@@ -291,8 +294,8 @@ def main():
 
     if opt.use_rec:
         train_data, val_data, batch_fn = get_data_rec(opt.rec_train, opt.rec_train_idx,
-                                                    opt.rec_val, opt.rec_val_idx,
-                                                    batch_size, num_workers)
+                                                      opt.rec_val, opt.rec_val_idx,
+                                                      batch_size, num_workers)
     else:
         train_data, val_data, batch_fn = get_data_loader(opt.data_dir, batch_size, num_workers)
 
@@ -433,12 +436,12 @@ def main():
                     train_metric_name, train_metric_score = train_metric.get()
                     if rank == 0:
                         logger.info('Epoch[%d] Batch [%d]\tSpeed: %f samples/sec\t%s=%f\tlr=%f'%(
-                                    epoch, i, batch_size*opt.log_interval/(time.time()-btic),
+                                    epoch, i, num_gpus * batch_size * opt.log_interval / (time.time() - btic),
                                     train_metric_name, train_metric_score, trainer.learning_rate))
                     btic = time.time()
 
             train_metric_name, train_metric_score = train_metric.get()
-            throughput = int(batch_size * i /(time.time() - tic))
+            throughput = int(num_gpus * batch_size * i / (time.time() - tic))
 
             err_top1_val, err_top5_val = test(ctx, val_data)
 
