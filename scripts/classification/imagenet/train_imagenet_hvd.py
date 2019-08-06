@@ -353,6 +353,23 @@ def main():
         _, top5 = acc_top5.get()
         return (1-top1, 1-top5)
 
+    def evaluate(epoch):
+        if opt.use_rec:
+            val_data.reset()
+
+        acc_top1 = mx.metric.Accuracy()
+        acc_top5 = mx.metric.TopKAccuracy(5)
+        for _, batch in enumerate(val_data):
+            data, label = batch_fn(batch, context)
+            output = net(data.astype(opt.dtype, copy=False))
+            acc_top1.update([label], [output])
+            acc_top5.update([label], [output])
+
+        top1_name, top1_acc = acc_top1.get()
+        top5_name, top5_acc = acc_top5.get()
+        logging.info('Epoch[%d] Rank[%d]\tValidation-%s=%f\tValidation-%s=%f',
+                     epoch, rank, top1_name, top1_acc, top5_name, top5_acc)
+
     def train(ctx):
         if opt.resume_params is '':
             net.initialize(mx.init.MSRAPrelu(), ctx=ctx)
@@ -433,9 +450,7 @@ def main():
                                                                             train_metric_score))
 
             if opt.eval_frequency and (epoch + 1) % opt.eval_frequency == 0:
-                err_top1_val, err_top5_val = test(ctx, val_data)
-                logger.info('Epoch [%d] Rank[%d] Validation: err-top1=%f err-top5=%f' % (epoch, rank,
-                                                                                         err_top1_val, err_top5_val))
+                evaluate(epoch)
 
             if rank == 0:
                 throughput = int(num_gpus * batch_size * num_batches / (time.time() - tic))
@@ -453,12 +468,15 @@ def main():
         #    net.save_parameters('%s/imagenet-%s-%d.params'%(save_dir, model_name, opt.num_epochs-1))
         #    trainer.save_states('%s/imagenet-%s-%d.states'%(save_dir, model_name, opt.num_epochs-1))
 
+        # Evaluate performance at the end of training
+        evaluate()
 
     if opt.mode == 'hybrid':
         net.hybridize(static_alloc=True, static_shape=True)
         if distillation:
             teacher.hybridize(static_alloc=True, static_shape=True)
     train(context)
+
 
 if __name__ == '__main__':
     main()
