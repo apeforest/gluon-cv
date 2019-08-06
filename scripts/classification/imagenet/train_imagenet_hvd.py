@@ -102,8 +102,6 @@ def parse_args():
                         'when training with gluon mode (default: 0)')
     parser.add_argument('--log-interval', type=int, default=50,
                         help='Number of batches to wait before logging.')
-    parser.add_argument('--logging-file', type=str, default='train_imagenet.log',
-                        help='name of training log file')
     parser.add_argument('--use-gn', action='store_true',
                         help='whether to use group norm.')
     parser.add_argument('--no-cuda', action='store_true', default=False,
@@ -115,12 +113,10 @@ def parse_args():
 def main():
     opt = parse_args()
 
-    filehandler = logging.FileHandler(opt.logging_file)
     streamhandler = logging.StreamHandler()
 
     logger = logging.getLogger('')
     logger.setLevel(logging.INFO)
-    logger.addHandler(filehandler)
     logger.addHandler(streamhandler)
 
     logger.info(opt)
