@@ -417,7 +417,7 @@ def main():
                 else:
                     train_metric.update(label, output)
 
-                if opt.log_interval and not (i+1)%opt.log_interval:
+                if opt.log_interval and (i+1) % opt.log_interval == 0:
                     train_metric_name, train_metric_score = train_metric.get()
                     if rank == 0:
                         logger.info('Epoch[%d] Batch [%d]\tSpeed: %f samples/sec\t%s=%f\tlr=%f'%(
@@ -426,14 +426,15 @@ def main():
                     btic = time.time()
 
             train_metric_name, train_metric_score = train_metric.get()
-            throughput = int(num_gpus * batch_size * i / (time.time() - tic))
 
             err_top1_val, err_top5_val = test(ctx, val_data)
 
-            logger.info('[Epoch %d] training: %s=%f'%(epoch, train_metric_name, train_metric_score))
-            logger.info('[Epoch %d] speed: %d samples/sec\ttime cost: %f'%(epoch, throughput, time.time()-tic))
-            logger.info('[Epoch %d] validation: err-top1=%f err-top5=%f'%(epoch, err_top1_val, err_top5_val))
+            logger.info('[Epoch %d] training: %s=%f' % (epoch, train_metric_name, train_metric_score))
+            logger.info('[Epoch %d] validation: err-top1=%f err-top5=%f' % (epoch, err_top1_val, err_top5_val))
 
+            if rank == 0:
+                throughput = int(num_gpus * batch_size * i / (time.time() - tic))
+                logger.info('[Epoch %d] speed: %d samples/sec\ttime cost: %f' % (epoch, throughput, time.time()-tic))
             #if err_top1_val < best_val_score:
             #    best_val_score = err_top1_val
             #    net.save_parameters('%s/%.4f-imagenet-%s-%d-best.params'%(save_dir, best_val_score, model_name, epoch))
