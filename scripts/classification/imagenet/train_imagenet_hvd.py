@@ -132,7 +132,8 @@ def main():
     num_training_samples = 1281167
 
     num_gpus = opt.num_gpus
-    batch_size *= max(1, num_gpus)
+    batch_size *= max(1, hvd.size())
+    logger.info('effective batch size :', batch_size)
     context = [mx.gpu(i) for i in range(num_gpus)] if num_gpus > 0 else [mx.cpu()]
     num_workers = opt.num_workers
 
