@@ -342,9 +342,9 @@ def main():
         acc_top5.reset()
         for i, batch in enumerate(val_data):
             data, label = batch_fn(batch, ctx)
-            outputs = [net(X.astype(opt.dtype, copy=False)) for X in data]
-            acc_top1.update(label, outputs)
-            acc_top5.update(label, outputs)
+            output = net(data.astype(opt.dtype, copy=False))
+            acc_top1.update([label], [output])
+            acc_top5.update([label], [output])
 
         _, top1 = acc_top1.get()
         _, top5 = acc_top5.get()
