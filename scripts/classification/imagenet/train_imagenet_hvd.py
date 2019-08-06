@@ -5,6 +5,7 @@ import mxnet as mx
 import gluoncv as gcv
 from mxnet import gluon, nd
 from mxnet import autograd as ag
+from mxnet.base import MXNetError
 from mxnet.gluon import nn
 from mxnet.gluon.data.vision import transforms
 
@@ -475,4 +476,11 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except MXNetError as e:
+        if "Horovod has been shut down" not in str(e):
+            logging.info("Error found in Rank[%d]", hvd.rank())
+            raise e
+        else:
+            logging.info("Horovod shutdonw error in Rank[%d]", hvd.rank())
