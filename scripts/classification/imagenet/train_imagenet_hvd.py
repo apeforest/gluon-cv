@@ -403,7 +403,7 @@ def main():
                     label = mixup_transform(label, classes, lam, eta)
 
                 elif opt.label_smoothing:
-                    hard_label = label
+                    hard_label = [label]
                     label = smooth(label, classes)
 
                 with ag.record():
@@ -413,9 +413,9 @@ def main():
                 trainer.step(batch_size)
 
                 if opt.label_smoothing:
-                    train_metric.update([hard_label], output)
+                    train_metric.update(hard_label, output)
                 else:
-                    train_metric.update([label], output)
+                    train_metric.update(label, output)
 
                 if opt.log_interval and not (i+1)%opt.log_interval:
                     train_metric_name, train_metric_score = train_metric.get()
