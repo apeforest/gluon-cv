@@ -411,7 +411,8 @@ def main():
                                     for X in data]
 
                 with ag.record():
-                    outputs = [net(X.astype(opt.dtype, copy=False)) for X in data]
+                    outputs = net(data.astype(opt.dtype, copy=False))
+                    # outputs = [net(X.astype(opt.dtype, copy=False)) for X in data]
                     if distillation:
                         loss = [L(yhat.astype('float32', copy=False),
                                   y.astype('float32', copy=False),
