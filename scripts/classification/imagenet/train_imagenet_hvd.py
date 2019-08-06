@@ -103,6 +103,8 @@ def parse_args():
                         help='name of training log file')
     parser.add_argument('--use-gn', action='store_true',
                         help='whether to use group norm.')
+    parser.add_argument('--no-cuda', action='store_true', default=False,
+                        help='disables CUDA training (default: False)')
     opt = parser.parse_args()
     return opt
 
@@ -133,7 +135,7 @@ def main():
         logger.info('Distributed training with %d workers and total batch size %d' % (num_gpus, batch_size * num_gpus))
 
     # Horovod: pin GPU to local rank
-    context = mx.cpu(local_rank) if args.no_cuda else mx.gpu(local_rank)
+    context = mx.cpu(local_rank) if opt.no_cuda else mx.gpu(local_rank)
     num_workers = opt.num_workers
 
     lr_decay = opt.lr_decay
