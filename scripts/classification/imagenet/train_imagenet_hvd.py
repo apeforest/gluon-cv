@@ -97,6 +97,9 @@ def parse_args():
                         help='path of parameters to load from.')
     parser.add_argument('--resume-states', type=str, default='',
                         help='path of trainer state to load from.')
+    parser.add_argument('--eval-frequency', type=int, default=0,
+                        help='frequency of evaluating validation accuracy '
+                        'when training with gluon mode (default: 0)')
     parser.add_argument('--log-interval', type=int, default=50,
                         help='Number of batches to wait before logging.')
     parser.add_argument('--logging-file', type=str, default='train_imagenet.log',
@@ -426,15 +429,17 @@ def main():
                     btic = time.time()
 
             train_metric_name, train_metric_score = train_metric.get()
+            logger.info('Epoch[%d] Rank [%d] Batch[%d]\tTraining: %s=%f' % (epoch, rank, i, train_metric_name,
+                                                                            train_metric_score))
 
-            err_top1_val, err_top5_val = test(ctx, val_data)
-
-            logger.info('[Epoch %d] training: %s=%f' % (epoch, train_metric_name, train_metric_score))
-            logger.info('[Epoch %d] validation: err-top1=%f err-top5=%f' % (epoch, err_top1_val, err_top5_val))
+            if opt.eval_frequency and (epoch + 1) % opt.eval_frequency == 0:
+                err_top1_val, err_top5_val = test(ctx, val_data)
+                logger.info('Epoch [%d] Rank[%d] Validation: err-top1=%f err-top5=%f' % (epoch, rank,
+                                                                                         err_top1_val, err_top5_val))
 
             if rank == 0:
-                throughput = int(num_gpus * batch_size * i / (time.time() - tic))
-                logger.info('[Epoch %d] speed: %d samples/sec\ttime cost: %f' % (epoch, throughput, time.time()-tic))
+                throughput = int(num_gpus * batch_size * num_batches / (time.time() - tic))
+                logger.info('Epoch [%d] Speed: %d samples/sec\ttime cost: %f' % (epoch, throughput, time.time()-tic))
             #if err_top1_val < best_val_score:
             #    best_val_score = err_top1_val
             #    net.save_parameters('%s/%.4f-imagenet-%s-%d-best.params'%(save_dir, best_val_score, model_name, epoch))
