@@ -207,7 +207,7 @@ def main():
         def batch_fn(batch, ctx):
             data = batch.data[0].as_in_context(ctx)
             label = batch.label[0].as_in_context(ctx)
-            return data, label
+            return [data], [label]
 
         train_data = mx.io.ImageRecordIter(
             path_imgrec         = rec_train,
@@ -371,14 +371,14 @@ def main():
         if opt.resume_params is '':
             net.initialize(mx.init.MSRAPrelu(), ctx=ctx)
 
+        if opt.no_wd:
+            for k, v in net.collect_params('.*beta|.*gamma|.*bias').items():
+                v.wd_mult = 0.0
+
         # Horovod: fetch and broadcast parameters
         params = net.collect_params()
         if params is not None:
             hvd.broadcast_parameters(params, root_rank=0)
-
-        if opt.no_wd:
-            for k, v in net.collect_params('.*beta|.*gamma|.*bias').items():
-                v.wd_mult = 0.0
 
         trainer = hvd.DistributedTrainer(params, optimizer, optimizer_params)
         if opt.resume_states is not '':
@@ -420,19 +420,20 @@ def main():
                     label = mixup_transform(label, classes, lam, eta)
 
                 elif opt.label_smoothing:
-                    hard_label = [label]
+                    hard_label = label
                     label = smooth(label, classes)
 
                 with ag.record():
-                    output = net(data.astype(opt.dtype, copy=False))
-                    loss = L(output, label)
-                loss.backward()
+                    outputs = [net(X.astype(opt.dtype, copy=False)) for X in data]
+                    loss = [L(yhat, y.astype(opt.dtype, copy=False)) for yhat, y in zip(outputs, label)]
+                for l in loss:
+                    l.backward()
                 trainer.step(batch_size)
 
                 if opt.label_smoothing:
-                    train_metric.update(hard_label, output)
+                    train_metric.update(hard_label, outputs)
                 else:
-                    train_metric.update(label, output)
+                    train_metric.update(label, outputs)
 
                 if opt.log_interval and (i+1) % opt.log_interval == 0:
                     train_metric_name, train_metric_score = train_metric.get()
