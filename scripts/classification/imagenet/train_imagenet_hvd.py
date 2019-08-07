@@ -466,7 +466,7 @@ def main():
         #    trainer.save_states('%s/imagenet-%s-%d.states'%(save_dir, model_name, opt.num_epochs-1))
 
         # Evaluate performance at the end of training
-        evaluate()
+        evaluate(epoch)
 
     if opt.mode == 'hybrid':
         net.hybridize(static_alloc=True, static_shape=True)
