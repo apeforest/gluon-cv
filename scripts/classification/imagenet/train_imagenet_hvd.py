@@ -442,6 +442,7 @@ def main():
                                     train_metric_name, train_metric_score, trainer.learning_rate))
                     btic = time.time()
 
+            elapsed = time.time() - tic
             train_metric_name, train_metric_score = train_metric.get()
             logger.info('Epoch[%d] Rank [%d] Batch[%d]\tTraining: %s=%f' % (epoch, rank, i, train_metric_name,
                                                                             train_metric_score))
@@ -450,8 +451,8 @@ def main():
                 evaluate(epoch)
 
             if rank == 0:
-                throughput = int(num_gpus * batch_size * num_batches / (time.time() - tic))
-                logger.info('Epoch [%d] Speed: %d samples/sec\ttime cost: %f' % (epoch, throughput, time.time()-tic))
+                throughput = int(num_gpus * batch_size * i / elapsed)
+                logger.info('Epoch [%d] Speed: %d samples/sec\ttime cost: %f' % (epoch, throughput, elapsed))
             #if err_top1_val < best_val_score:
             #    best_val_score = err_top1_val
             #    net.save_parameters('%s/%.4f-imagenet-%s-%d-best.params'%(save_dir, best_val_score, model_name, epoch))
